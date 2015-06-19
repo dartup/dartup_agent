@@ -2,6 +2,10 @@
 // is governed by a BSD-style license that can be found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:io';
+
+import 'package:postgresql/postgresql.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 main() async {
   List sites = await assignNames(getFromDB()).toList();
@@ -21,23 +25,19 @@ class Site{
   int port = 0;
 }
 
-/// @todo add meat.
-Stream<Site> getFromDB(){
-  var fakeData = [];
-  fakeData.add(new Site()
-    ..name = 'fake1'
-    ..gitUrl = 'git://exsample.com/'
-  );
-  fakeData.add(new Site()
-    ..name = 'fake2'
-    ..gitUrl = 'git://exsample.com/'
-  );
-  fakeData.add(new Site()
-    ..name = 'fake3'
-    ..gitUrl = 'git://exsample.com/'
-  );
-
-  return new Stream.fromIterable(fakeData);
+/// Loads Site data from an Postgres Database.
+///
+/// It looks for connection parameters in an environmental variable called POSTGRES_URI. And interets it as an Uri.
+/// Then the main site information is in the X table with the site environment vriables being in an Y table.
+///
+/// Will get all the sites that are not evil.
+Stream<Site> getFromDB() async*{
+  var con = await connect(Platform.environment['POSTGRES_URI']);
+  var result = await con.query('SELECT name,giturl,envvar FROM site where evil = false;');
+  yield* result.map((Row r) => new Site()
+    ..name = r.name
+    ..gitUrl = r.giturl
+    ..envVars.addAll(r.envvar));
 }
 
 /// @todo add meat.
