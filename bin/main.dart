@@ -9,7 +9,7 @@ import 'package:postgresql/postgresql.dart';
 main() async {
   Stream<Site> sites = assignNames(getFromDB()).asBroadcastStream();
 
-  List<Future> work = [writeNgnixConf(sites).then(startNgnix)];
+  List<Future> work = [writeNginxConf(sites).then(startNgnix)];
   work.addAll(await sites.map(runSite).toList());
 
   await Future.wait(work);
@@ -53,8 +53,8 @@ Stream<Site> assignNames(Stream<Site> sites){
   });
 }
 
-/// Writes Ngnix config files.
-Future<String> writeNgnixConf(Stream<Site> sites){
+/// Writes Nginx config files.
+Future<String> writeNginxConf(Stream<Site> sites){
   return sites.map((site){
     return '''
 server {
@@ -70,9 +70,19 @@ server {
   }).join('\n');
 }
 
-/// @todo add meat.
+/// Save the config and start Nginx.
+///
+/// Save the config file to /etc/nginx/conf.d/dartup.conf
 Future startNgnix(String conf) async{
-  print('Fake Ngnix started');
+  var file = new File('/etc/nginx/conf.d/dartup.conf');
+  await file.writeAsString(conf);
+  print('Written /etc/nginx/conf.d/dartup.conf');
+
+  Process.run('nginx',[]).then((result){
+    print(result.stdout);
+    print(result.stderr);
+  });
+  print('Ngnix started');
   print(conf);
 }
 
