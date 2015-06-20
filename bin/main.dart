@@ -5,14 +5,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:postgresql/postgresql.dart';
-import 'package:stack_trace/stack_trace.dart';
 
 main() async {
-  List sites = await assignNames(getFromDB()).toList();
+  Stream<Site> sites = assignNames(getFromDB()).asBroadcastStream();
 
-  await startNgnix(writeNgnixConf(sites));
+  List<Future> work = [writeNgnixConf(sites).then(startNgnix)];
+  work.addAll(await sites.map(runSite).toList());
 
-  await Future.wait(sites.map(runSite));
+  await Future.wait(work);
 }
 
 Future runSite(Site site) => addUser(site).then(cloneGit).then(pubGet).then(startServer);
@@ -52,7 +52,7 @@ Stream<Site> assignNames(Stream<Site> sites){
 }
 
 /// @todo add meat.
-String writeNgnixConf(List<Site> sites){
+Future<String> writeNgnixConf(Stream<Site> sites){
   return sites.map((s) => '${s.name}.dartup.io').join('\n');
 }
 
