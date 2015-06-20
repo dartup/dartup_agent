@@ -53,9 +53,21 @@ Stream<Site> assignNames(Stream<Site> sites){
   });
 }
 
-/// @todo add meat.
+/// Writes Ngnix config files.
 Future<String> writeNgnixConf(Stream<Site> sites){
-  return sites.map((s) => '${s.name}.dartup.io').join('\n');
+  return sites.map((site){
+    return '''
+server {
+  listen 80;
+  server_name ${site.name}.dartup.io;
+  location / {
+    proxy_pass       http://localhost:${site.port};
+    proxy_set_header Host      \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+  }
+}
+  ''';
+  }).join('\n');
 }
 
 /// @todo add meat.
