@@ -40,7 +40,9 @@ Stream<Site> getFromDB() async*{
     ..envVars.addAll(r.envvar));
 }
 
-/// @todo add meat.
+/// Add linux username and port number to sites.
+///
+/// At this early stage make it simple and dumb.
 Stream<Site> assignNames(Stream<Site> sites){
   var i = 1;
   return sites.map((s){
