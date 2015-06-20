@@ -78,17 +78,18 @@ Future startNgnix(String conf) async{
   await file.writeAsString(conf);
   print('Written /etc/nginx/conf.d/dartup.conf');
 
-  Process.run('nginx',[]).then((result){
-    print(result.stdout);
-    print(result.stderr);
-  });
+  var result = await Process.run('nginx',[],runInShell: true);
   print('Ngnix started');
-  print(conf);
+  print(result.stdout);
+  print(result.stderr);
 }
 
-/// @todo add meat.
+/// Add the user in Site.user
 Future<Site> addUser(Site site) async{
-  print('Fake adder user: ${site.user}');
+  var result = await Process.run('useradd',[site.user],runInShell: true);
+  print('Created user: ${site.user}');
+  print(result.stdout);
+  print(result.stderr);
   return site;
 }
 
