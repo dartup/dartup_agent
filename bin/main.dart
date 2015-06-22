@@ -93,9 +93,13 @@ Future<Site> addUser(Site site) async{
   return site;
 }
 
-/// @todo add meat.
-Future<Site> cloneGit(Site site)async{
-  print('Fake clone git: ${site.gitUrl}');
+/// Get only the tip of git repository. For now there is no need to get the hole thing.
+Future<Site> cloneGit(Site site) async {
+  var exec = 'git clone --depth 1 ${site.gitUrl} project';
+  var result = await Process.run('runuser',['-l',site.user,'-c',exec],runInShell: true, workingDirectory: '/home/${site.user}');
+  print('Git clone git: ${site.gitUrl}');
+  print(result.stdout);
+  print(result.stderr);
   return site;
 }
 
