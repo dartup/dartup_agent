@@ -122,7 +122,7 @@ Future<Site> startServer(Site site) async{
     'DARTUP_ADDRESS': '127.0.0.1',
     'DARTUP_DOMAIN': '${site.name}.dartup.io'
   };
-  var str = env.keys.map((e) => '$e=${env[e]};').join('');
+  var str = env.keys.map((e) => '$e=${env[e]}').join(' ');
   var exec = 'cd project; $str dart bin/server.dart';
   var process = await Process.start('runuser',['-l',site.user,'-c',exec], runInShell: true, workingDirectory: '/home/${site.user}/project', environment: env);
   print('Started ${site.name}');
