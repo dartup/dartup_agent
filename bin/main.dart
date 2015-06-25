@@ -3,6 +3,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:postgresql/postgresql.dart';
 
@@ -105,8 +106,8 @@ Future<Site> cloneGit(Site site) async{
 
 /// Just run pub get.
 Future<Site> pubGet(Site site) async{
-  var exec = 'pub get';
-  var result = await Process.run('runuser',['-l',site.user,'-c',exec], runInShell: true, workingDirectory: '/home/${site.user}/project');
+  var exec = 'cd project; pub get';
+  var result = await Process.run('runuser',['-l',site.user,'-c',exec], runInShell: true);
   print('Git pubGet');
   print(result.stdout);
   print(result.stderr);
@@ -121,8 +122,11 @@ Future<Site> startServer(Site site) async{
     'DARTUP_ADDRESS': '127.0.0.1',
     'DARTUP_DOMAIN': '${site.name}.dartup.io'
   };
-  var exec = 'dart bin/server.dart';
-  var process = Process.start('runuser',['-l',site.user,'-c',exec], runInShell: true, workingDirectory: '/home/${site.user}/project', environment: env);
+  var str = env.keys.map((e) => '$e=${env[e]};').join('');
+  var exec = 'cd project; $str dart bin/server.dart';
+  var process = await Process.start('runuser',['-l',site.user,'-c',exec], runInShell: true, workingDirectory: '/home/${site.user}/project', environment: env);
   print('Started ${site.name}');
+  process.stdout.transform(UTF8.decoder).listen(print);
+  process.stderr.transform(UTF8.decoder).listen(print);
   return site;
 }
