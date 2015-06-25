@@ -94,7 +94,7 @@ Future<Site> addUser(Site site) async{
 }
 
 /// Get only the tip of git repository. For now there is no need to get the hole thing.
-Future<Site> cloneGit(Site site) async {
+Future<Site> cloneGit(Site site) async{
   var exec = 'git clone --depth 1 ${site.gitUrl} project';
   var result = await Process.run('runuser',['-l',site.user,'-c',exec],runInShell: true, workingDirectory: '/home/${site.user}');
   print('Git clone git: ${site.gitUrl}');
@@ -103,14 +103,26 @@ Future<Site> cloneGit(Site site) async {
   return site;
 }
 
-/// @todo add meat.
-Future<Site> pubGet(Site site)async{
-  print('Fake pubGet');
+/// Just run pub get.
+Future<Site> pubGet(Site site) async{
+  var exec = 'pub get';
+  var result = await Process.run('runuser',['-l',site.user,'-c',exec], runInShell: true, workingDirectory: '/home/${site.user}/project');
+  print('Git pubGet');
+  print(result.stdout);
+  print(result.stderr);
   return site;
 }
 
-/// @todo add meat.
-Future<Site> startServer(Site site)async{
-  print('Fake started ${site.name}');
+/// Sets up the environment variables and starts the server finally.
+Future<Site> startServer(Site site) async{
+  var env = {
+    'DARTUP': '1',
+    'DARTUP_PORT': site.port.toString(),
+    'DARTUP_ADDRESS': '127.0.0.1',
+    'DARTUP_DOMAIN': '${site.name}.dartup.io'
+  };
+  var exec = 'dart bin/server.dart';
+  var process = Process.start('runuser',['-l',site.user,'-c',exec], runInShell: true, workingDirectory: '/home/${site.user}/project', environment: env);
+  print('Started ${site.name}');
   return site;
 }
