@@ -1,5 +1,6 @@
-// Copyright (c) 2015, <your name>. All rights reserved. Use of this source code
-// is governed by a BSD-style license that can be found in the LICENSE file.
+// Copyright (c) 2015, Ole Martin Gjersvik. All rights reserved. Use of this
+// source code is governed by a BSD-style license that can be found in the
+// LICENSE file.
 
 import 'dart:async';
 import 'dart:io';
@@ -16,25 +17,28 @@ main() async {
   await Future.wait(work);
 }
 
-Future runSite(Site site) => addUser(site).then(cloneGit).then(pubGet).then(startServer);
+Future runSite(Site site) =>
+    addUser(site).then(cloneGit).then(pubGet).then(startServer);
 
-class Site{
+class Site {
   String name = '';
   String gitUrl = '';
-  Map<String,String> envVars = {};
+  Map<String, String> envVars = {};
   String user = 'nobody';
   int port = 0;
 }
 
 /// Loads Site data from an Postgres Database.
 ///
-/// It looks for connection parameters in an environmental variable called POSTGRES_URI. And interets it as an Uri.
-/// Then the main site information is in the X table with the site environment vriables being in an Y table.
+/// It looks for connection parameters in an environmental variable called
+/// POSTGRES_URI. And interets it as an Uri. Then the main site information is
+/// in the X table with the site environment vriables being in an Y table.
 ///
 /// Will get all the sites that are not evil.
-Stream<Site> getFromDB() async*{
+Stream<Site> getFromDB() async* {
   var con = await connect(Platform.environment['POSTGRES_URI']);
-  var result = await con.query('SELECT name,giturl,envvar FROM site where evil = false;');
+  var result = await con
+      .query('SELECT name,giturl,envvar FROM site where evil = false;');
   yield* result.map((Row r) => new Site()
     ..name = r.name
     ..gitUrl = r.giturl
@@ -44,9 +48,9 @@ Stream<Site> getFromDB() async*{
 /// Add linux username and port number to sites.
 ///
 /// At this early stage make it simple and dumb.
-Stream<Site> assignNames(Stream<Site> sites){
+Stream<Site> assignNames(Stream<Site> sites) {
   var i = 1;
-  return sites.map((s){
+  return sites.map((s) {
     s.user = 'user$i';
     s.port = 8000 + i;
     i += 1;
@@ -55,8 +59,8 @@ Stream<Site> assignNames(Stream<Site> sites){
 }
 
 /// Writes Nginx config files.
-Future<String> writeNginxConf(Stream<Site> sites){
-  return sites.map((site){
+Future<String> writeNginxConf(Stream<Site> sites) {
+  return sites.map((site) {
     return '''
 server {
   listen 80;
@@ -74,30 +78,32 @@ server {
 /// Save the config and start Nginx.
 ///
 /// Save the config file to /etc/nginx/conf.d/dartup.conf
-Future startNgnix(String conf) async{
+Future startNgnix(String conf) async {
   var file = new File('/etc/nginx/conf.d/dartup.conf');
   await file.writeAsString(conf);
   print('Written /etc/nginx/conf.d/dartup.conf');
 
-  var result = await Process.run('nginx',[],runInShell: true);
+  var result = await Process.run('nginx', [], runInShell: true);
   print('Ngnix started');
   print(result.stdout);
   print(result.stderr);
 }
 
 /// Add the user in Site.user
-Future<Site> addUser(Site site) async{
-  var result = await Process.run('useradd',[site.user],runInShell: true);
+Future<Site> addUser(Site site) async {
+  var result = await Process.run('useradd', [site.user], runInShell: true);
   print('Created user: ${site.user}');
   print(result.stdout);
   print(result.stderr);
   return site;
 }
 
-/// Get only the tip of git repository. For now there is no need to get the hole thing.
-Future<Site> cloneGit(Site site) async{
+/// Get only the tip of git repository. For now there is no need to get the hole
+/// thing.
+Future<Site> cloneGit(Site site) async {
   var exec = 'git clone --depth 1 ${site.gitUrl} project';
-  var result = await Process.run('runuser',['-l',site.user,'-c',exec],runInShell: true, workingDirectory: '/home/${site.user}');
+  var result = await Process.run('runuser', ['-l', site.user, '-c', exec],
+      runInShell: true, workingDirectory: '/home/${site.user}');
   print('Git clone git: ${site.gitUrl}');
   print(result.stdout);
   print(result.stderr);
@@ -105,9 +111,10 @@ Future<Site> cloneGit(Site site) async{
 }
 
 /// Just run pub get.
-Future<Site> pubGet(Site site) async{
+Future<Site> pubGet(Site site) async {
   var exec = 'cd project; pub get';
-  var result = await Process.run('runuser',['-l',site.user,'-c',exec], runInShell: true);
+  var result = await Process.run('runuser', ['-l', site.user, '-c', exec],
+      runInShell: true);
   print('Git pubGet');
   print(result.stdout);
   print(result.stderr);
@@ -115,7 +122,7 @@ Future<Site> pubGet(Site site) async{
 }
 
 /// Sets up the environment variables and starts the server finally.
-Future<Site> startServer(Site site) async{
+Future<Site> startServer(Site site) async {
   var env = {
     'DARTUP': '1',
     'DARTUP_PORT': site.port.toString(),
@@ -124,7 +131,10 @@ Future<Site> startServer(Site site) async{
   };
   var str = env.keys.map((e) => '$e=${env[e]}').join(' ');
   var exec = 'cd project; $str dart bin/server.dart';
-  var process = await Process.start('runuser',['-l',site.user,'-c',exec], runInShell: true, workingDirectory: '/home/${site.user}/project', environment: env);
+  var process = await Process.start('runuser', ['-l', site.user, '-c', exec],
+      runInShell: true,
+      workingDirectory: '/home/${site.user}/project',
+      environment: env);
   print('Started ${site.name}');
   process.stdout.transform(UTF8.decoder).listen(print);
   process.stderr.transform(UTF8.decoder).listen(print);
