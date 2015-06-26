@@ -1,11 +1,11 @@
-name: dartup_shared_server
+name: dartup_agent
 version: 0.0.1
 description: A sample command-line application.
-#author: <your name> <email@example.com>
-#homepage: https://www.example.com
+author: Ole Martin Gjersvik <olem@olem.org>
+homepage: https://github.com/dartup/dartup_agent
 environment:
   sdk: '>=1.9.0 <2.0.0'
 dependencies:
-  postgresql: "^0.3.1+1"
+  postgresql: '^0.3.1+1'
 dev_dependencies:
   test: '>=0.12.0 <0.13.0'
