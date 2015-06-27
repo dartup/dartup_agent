@@ -12,7 +12,7 @@ part of dartup_agent;
 bool fakeRun = false;
 
 /// Will do the same as [Process.run].
-Future<ProcessResult> run(String executable, List<String> arguments) async {
+Future<ProcessResult> runProcess(String executable, List<String> arguments) async {
   if (fakeRun) {
     return new ProcessResult(
         -1, 0, '', 'Faking: $executable ' + argumentsToString(arguments));
@@ -21,7 +21,7 @@ Future<ProcessResult> run(String executable, List<String> arguments) async {
 }
 
 /// Will do the same as [Process.start].
-Future<Process> start(String executable, List<String> arguments) async {
+Future<Process> startProcess(String executable, List<String> arguments) async {
   if (fakeRun) {
     return new _FakeProcess(
         'Faking: $executable ' + argumentsToString(arguments));

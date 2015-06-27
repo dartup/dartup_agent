@@ -19,7 +19,7 @@ main() => group('process.dart', () {
     });
 
     test('Try to run dart --version.', () async {
-      var res = await run('dart', ['--version']);
+      var res = await runProcess('dart', ['--version']);
       // dart will return something like
       // 'Dart VM version: 1.11.0 (Wed Jun 24 06:44:48 2015) on "windows_x64"'
       // to make the test lest fragile only look for successful return and Dart
@@ -29,7 +29,7 @@ main() => group('process.dart', () {
     });
 
     test('Try to start dart --version.', () async {
-      var pro = await start('dart', ['--version']);
+      var pro = await startProcess('dart', ['--version']);
       // dart will return something like
       // 'Dart VM version: 1.11.0 (Wed Jun 24 06:44:48 2015) on "windows_x64"'
       // to make the test lest fragile only look for successful return and Dart
@@ -52,7 +52,7 @@ main() => group('process.dart', () {
     });
 
     test('Try to run dart --version.', () async {
-      var res = await run('dart', ['--version']);
+      var res = await runProcess('dart', ['--version']);
       // Not that its faked we know what the result should be.
       expect(res.pid, -1);
       expect(res.exitCode, 0);
@@ -61,7 +61,7 @@ main() => group('process.dart', () {
     });
 
     test('Try to start dart --version.', () async {
-      var pro = await start('dart', ['--version']);
+      var pro = await startProcess('dart', ['--version']);
       // Not that its faked we know what the result should be.
       expect(pro.pid, -1);
       expect(await pro.exitCode, 0);

@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'package:postgresql/postgresql.dart';
 
 part 'src/process.dart';
+part 'src/user.dart';
 
 main() async {
   if (Platform.environment['FAKE'] == '1') {
@@ -32,7 +33,7 @@ class Site {
   String name = '';
   String gitUrl = '';
   Map<String, String> envVars = {};
-  String user = 'nobody';
+  User user;
   int port = 0;
 }
 
@@ -59,7 +60,7 @@ Stream<Site> getFromDB() async* {
 Stream<Site> assignNames(Stream<Site> sites) {
   var i = 1;
   return sites.map((s) {
-    s.user = 'user$i';
+    s.user = new User('user$i');
     s.port = 8000 + i;
     i += 1;
     return s;
@@ -91,7 +92,7 @@ Future startNgnix(String conf) async {
   await file.writeAsString(conf);
   print('Written /etc/nginx/conf.d/dartup.conf');
 
-  var result = await run('nginx', []);
+  var result = await runProcess('nginx', []);
   print('Ngnix started');
   print(result.stdout);
   print(result.stderr);
@@ -99,7 +100,7 @@ Future startNgnix(String conf) async {
 
 /// Add the user in Site.user
 Future<Site> addUser(Site site) async {
-  var result = await run('useradd', [site.user]);
+  var result = await runProcess('useradd', [site.user]);
   print('Created user: ${site.user}');
   print(result.stdout);
   print(result.stderr);
@@ -109,8 +110,7 @@ Future<Site> addUser(Site site) async {
 /// Get only the tip of git repository. For now there is no need to get the hole
 /// thing.
 Future<Site> cloneGit(Site site) async {
-  var exec = 'git clone --depth 1 ${site.gitUrl} project';
-  var result = await run('runuser', ['-l', site.user, '-c', exec]);
+  var result = await site.user.run('git', ['--depth','1',site.gitUrl,'project']);
   print('Git clone git: ${site.gitUrl}');
   print(result.stdout);
   print(result.stderr);
@@ -119,8 +119,7 @@ Future<Site> cloneGit(Site site) async {
 
 /// Just run pub get.
 Future<Site> pubGet(Site site) async {
-  var exec = 'cd project; pub get';
-  var result = await run('runuser', ['-l', site.user, '-c', exec]);
+  var result = await site.user.run('pub', ['get'],workingDirectory: 'project');
   print('Git pubGet');
   print(result.stdout);
   print(result.stderr);
@@ -135,9 +134,7 @@ Future<Site> startServer(Site site) async {
     'DARTUP_ADDRESS': '127.0.0.1',
     'DARTUP_DOMAIN': '${site.name}.dartup.io'
   };
-  var str = env.keys.map((e) => '$e=${env[e]}').join(' ');
-  var exec = 'cd project; $str dart bin/server.dart';
-  var process = await start('runuser', ['-l', site.user, '-c', exec]);
+  var process = await site.user.start('dart',['bin/server.dart'],workingDirectory: 'project', environment: env);
   print('Started ${site.name}');
   process.stdout.transform(UTF8.decoder).listen(print);
   process.stderr.transform(UTF8.decoder).listen(print);
