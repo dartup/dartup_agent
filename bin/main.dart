@@ -13,7 +13,7 @@ import 'package:postgresql/postgresql.dart';
 part 'src/process.dart';
 
 main() async {
-  if(Platform.environment['FAKE'] = '1'){
+  if (Platform.environment['FAKE'] == '1') {
     fakeRun = true;
   }
 
