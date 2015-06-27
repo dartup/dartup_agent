@@ -2,13 +2,21 @@
 // source code is governed by a BSD-style license that can be found in the
 // LICENSE file.
 
+library dartup_agent;
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
 import 'package:postgresql/postgresql.dart';
 
+part 'src/process.dart';
+
 main() async {
+  if(Platform.environment['FAKE'] = '1'){
+    fakeRun = true;
+  }
+
   Stream<Site> sites = assignNames(getFromDB()).asBroadcastStream();
 
   List<Future> work = [writeNginxConf(sites).then(startNgnix)];
@@ -83,7 +91,7 @@ Future startNgnix(String conf) async {
   await file.writeAsString(conf);
   print('Written /etc/nginx/conf.d/dartup.conf');
 
-  var result = await Process.run('nginx', [], runInShell: true);
+  var result = await run('nginx', []);
   print('Ngnix started');
   print(result.stdout);
   print(result.stderr);
@@ -91,7 +99,7 @@ Future startNgnix(String conf) async {
 
 /// Add the user in Site.user
 Future<Site> addUser(Site site) async {
-  var result = await Process.run('useradd', [site.user], runInShell: true);
+  var result = await run('useradd', [site.user]);
   print('Created user: ${site.user}');
   print(result.stdout);
   print(result.stderr);
@@ -102,8 +110,7 @@ Future<Site> addUser(Site site) async {
 /// thing.
 Future<Site> cloneGit(Site site) async {
   var exec = 'git clone --depth 1 ${site.gitUrl} project';
-  var result = await Process.run('runuser', ['-l', site.user, '-c', exec],
-      runInShell: true, workingDirectory: '/home/${site.user}');
+  var result = await run('runuser', ['-l', site.user, '-c', exec]);
   print('Git clone git: ${site.gitUrl}');
   print(result.stdout);
   print(result.stderr);
@@ -113,8 +120,7 @@ Future<Site> cloneGit(Site site) async {
 /// Just run pub get.
 Future<Site> pubGet(Site site) async {
   var exec = 'cd project; pub get';
-  var result = await Process.run('runuser', ['-l', site.user, '-c', exec],
-      runInShell: true);
+  var result = await run('runuser', ['-l', site.user, '-c', exec]);
   print('Git pubGet');
   print(result.stdout);
   print(result.stderr);
@@ -131,10 +137,7 @@ Future<Site> startServer(Site site) async {
   };
   var str = env.keys.map((e) => '$e=${env[e]}').join(' ');
   var exec = 'cd project; $str dart bin/server.dart';
-  var process = await Process.start('runuser', ['-l', site.user, '-c', exec],
-      runInShell: true,
-      workingDirectory: '/home/${site.user}/project',
-      environment: env);
+  var process = await start('runuser', ['-l', site.user, '-c', exec]);
   print('Started ${site.name}');
   process.stdout.transform(UTF8.decoder).listen(print);
   process.stderr.transform(UTF8.decoder).listen(print);
