@@ -11,58 +11,44 @@ import 'dart:convert';
 import 'package:postgresql/postgresql.dart';
 
 part 'src/process.dart';
+part 'src/site.dart';
 part 'src/user.dart';
+
+Map<String,Site> sites = {};
 
 main() async {
   if (Platform.environment['FAKE'] == '1') {
     fakeRun = true;
   }
 
-  Stream<Site> sites = assignNames(getFromDB()).asBroadcastStream();
+  Stream<Site> stream = getFromDB();
+  stream = runSites(stream);
 
-  List<Future> work = [writeNginxConf(sites).then(startNgnix)];
-  work.addAll(await sites.map(runSite).toList());
-
-  await Future.wait(work);
-}
-
-Future runSite(Site site) =>
-    addUser(site).then(cloneGit).then(pubGet).then(startServer);
-
-class Site {
-  String name = '';
-  String gitUrl = '';
-  Map<String, String> envVars = {};
-  User user;
-  int port = 0;
+  await writeNginxConf(stream).then(startNgnix);
 }
 
 /// Loads Site data from an Postgres Database.
 ///
 /// It looks for connection parameters in an environmental variable called
-/// POSTGRES_URI. And interets it as an Uri. Then the main site information is
-/// in the X table with the site environment vriables being in an Y table.
+/// POSTGRES_URI. Then the main site information is in the site table.
 ///
 /// Will get all the sites that are not evil.
 Stream<Site> getFromDB() async* {
   var con = await connect(Platform.environment['POSTGRES_URI']);
   var result = await con
       .query('SELECT name,giturl,envvar FROM site where evil = false;');
-  yield* result.map((Row r) => new Site()
-    ..name = r.name
-    ..gitUrl = r.giturl
-    ..envVars.addAll(r.envvar));
+  yield* result.map((Row r) => new Site(r.name, r.giturl, r.envvar));
 }
 
 /// Add linux username and port number to sites.
 ///
 /// At this early stage make it simple and dumb.
-Stream<Site> assignNames(Stream<Site> sites) {
+Stream<Site> runSites(Stream<Site> stream) {
   var i = 1;
-  return sites.map((s) {
-    s.user = new User('user$i');
-    s.port = 8000 + i;
+  return stream.map((Site s) {
+    s.start(new User('user$i'), 8000 + i);
     i += 1;
+    sites[s.name] = s;
     return s;
   });
 }
@@ -96,47 +82,4 @@ Future startNgnix(String conf) async {
   print('Ngnix started');
   print(result.stdout);
   print(result.stderr);
-}
-
-/// Add the user in Site.user
-Future<Site> addUser(Site site) async {
-  var result = await runProcess('useradd', [site.user]);
-  print('Created user: ${site.user}');
-  print(result.stdout);
-  print(result.stderr);
-  return site;
-}
-
-/// Get only the tip of git repository. For now there is no need to get the hole
-/// thing.
-Future<Site> cloneGit(Site site) async {
-  var result = await site.user.run('git', ['--depth','1',site.gitUrl,'project']);
-  print('Git clone git: ${site.gitUrl}');
-  print(result.stdout);
-  print(result.stderr);
-  return site;
-}
-
-/// Just run pub get.
-Future<Site> pubGet(Site site) async {
-  var result = await site.user.run('pub', ['get'],workingDirectory: 'project');
-  print('Git pubGet');
-  print(result.stdout);
-  print(result.stderr);
-  return site;
-}
-
-/// Sets up the environment variables and starts the server finally.
-Future<Site> startServer(Site site) async {
-  var env = {
-    'DARTUP': '1',
-    'DARTUP_PORT': site.port.toString(),
-    'DARTUP_ADDRESS': '127.0.0.1',
-    'DARTUP_DOMAIN': '${site.name}.dartup.io'
-  };
-  var process = await site.user.start('dart',['bin/server.dart'],workingDirectory: 'project', environment: env);
-  print('Started ${site.name}');
-  process.stdout.transform(UTF8.decoder).listen(print);
-  process.stderr.transform(UTF8.decoder).listen(print);
-  return site;
 }
