@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'package:postgresql/postgresql.dart';
 
 part 'src/process.dart';
+part 'src/server.dart';
 part 'src/site.dart';
 part 'src/user.dart';
 
@@ -26,21 +27,6 @@ main() async {
 
   await webServer();
   await writeNginxConf(stream).then(startNgnix);
-}
-
-webServer() async{
-  var server = await HttpServer.bind('127.0.0.1',8000);
-  server.listen((HttpRequest request){
-    var path = request.uri.pathSegments;
-    if(path.isEmpty || !sites.containsKey(path.first)){
-      request.response.statusCode = 404;
-      request.response.close();
-      return;
-    }
-    Site site = sites[path.first];
-    request.response.writeln(site.output.toString());
-    request.response.close();
-  });
 }
 
 /// Loads Site data from an Postgres Database.
