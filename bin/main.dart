@@ -24,7 +24,23 @@ main() async {
   Stream<Site> stream = getFromDB();
   stream = runSites(stream);
 
+  await webServer();
   await writeNginxConf(stream).then(startNgnix);
+}
+
+webServer() async{
+  var server = await HttpServer.bind('127.0.0.1',8000);
+  server.listen((HttpRequest request){
+    var path = request.uri.pathSegments;
+    if(path.isEmpty || !sites.containsKey(path.first)){
+      request.response.statusCode = 404;
+      request.response.close();
+      return;
+    }
+    Site site = sites[path.first];
+    request.response.writeln(site.output.toString());
+    request.response.close();
+  });
 }
 
 /// Loads Site data from an Postgres Database.
@@ -54,8 +70,20 @@ Stream<Site> runSites(Stream<Site> stream) {
 }
 
 /// Writes Nginx config files.
-Future<String> writeNginxConf(Stream<Site> sites) {
-  return sites.map((site) {
+Future<String> writeNginxConf(Stream<Site> sites) async {
+  var s = '''
+server {
+  listen 80;
+  server_name dartup.io;
+  location / {
+    proxy_pass       http://localhost:8000;
+    proxy_set_header Host      \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+  }
+}
+  ''';
+
+  return s + await sites.map((site) {
     return '''
 server {
   listen 80;
@@ -74,8 +102,10 @@ server {
 ///
 /// Save the config file to /etc/nginx/conf.d/dartup.conf
 Future startNgnix(String conf) async {
+  if (fakeRun == false) {
   var file = new File('/etc/nginx/conf.d/dartup.conf');
   await file.writeAsString(conf);
+  }
   print('Written /etc/nginx/conf.d/dartup.conf');
 
   var result = await runProcess('nginx', []);
