@@ -48,7 +48,9 @@ Stream<Site> getFromDB() async* {
 Stream<Site> runSites(Stream<Site> stream) {
   var i = 1;
   return stream.map((Site s) {
-    s.start(new User('user$i'), 8000 + i);
+    s.user = new User('user$i');
+    s.port = 8000 + i;
+    s.start();
     i += 1;
     sites[s.name] = s;
     return s;
@@ -89,8 +91,10 @@ server {
 /// Save the config file to /etc/nginx/conf.d/dartup.conf
 Future startNgnix(String conf) async {
   if (fakeRun == false) {
-  var file = new File('/etc/nginx/conf.d/dartup.conf');
-  await file.writeAsString(conf);
+    var file = new File('/etc/nginx/conf.d/dartup.conf');
+    await file.writeAsString(conf);
+  }else{
+    print(conf);
   }
   print('Written /etc/nginx/conf.d/dartup.conf');
 

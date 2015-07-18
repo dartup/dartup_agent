@@ -16,9 +16,7 @@ class Site{
     }
   }
 
-  Future<Site> start(User user, int port) async{
-    this.user = user;
-    this.port = port;
+  Future<Site> start() async{
     await addUser();
     await cloneGit();
     await pubGet();
@@ -39,7 +37,7 @@ class Site{
 
   /// Add the user in Site.user
   Future addUser() async {
-    var result = await runProcess('useradd', [user]);
+    var result = await runProcess('useradd', [user.toString()]);
     print('Created user: $user');
     print(result.stdout);
     print(result.stderr);
