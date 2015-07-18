@@ -13,6 +13,10 @@ webServer() async{
     // is sitepage
     if(sites.containsKey(path.first)){
       Site site = sites[path.first];
+      if(path.last == 'update') {
+        update(request, site);
+        return;
+      }
       sendHtml(request.response,detailPage(site));
       return;
     }
@@ -20,6 +24,13 @@ webServer() async{
     request.response.statusCode = 404;
     request.response.close();
   });
+}
+
+update(HttpRequest req, Site site){
+  site.update();
+  req.response.statusCode = 303;
+  req.response.headers.add('Location','http://${req.requestedUri.authority}/${site.name}');
+  req.response.close();
 }
 
 sendHtml(HttpResponse res,String body){
