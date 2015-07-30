@@ -14,6 +14,7 @@ part 'src/process.dart';
 part 'src/server.dart';
 part 'src/site.dart';
 part 'src/user.dart';
+part 'src/webproxy.dart';
 
 Map<String,Site> sites = {};
 
