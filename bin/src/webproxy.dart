@@ -2,25 +2,34 @@ part of dartup_agent;
 
 abstract class VirtualProxy {
 
-  /// Adds information on virtual host
+  /// Add a new virtual host.
   ///
-  VirtualHost addHost(String name, {String hostname, int port});
+  /// The [id] is just an identifier for future reference must be unique.
+  /// You may request what host the proxy should listen to. But the
+  /// implementation may ignore your request and just assign a domain name for
+  /// you. Its a normal practice when running in more development modes.
+  /// This method must be idempotent as in a second request will just work as a
+  /// [getHost].
+  ///
+  /// Return VirtualHost with the assigned values. VirtualHost is immutable and
+  /// only represents a point in time.
+  VirtualHost addHost(String id, {String domainName});
 
   /// Gets information about a host.
-  ///
-  /// Returns the same data as [addHost] except that it returns an empty Map on no data found.
-  ///
-  /// Do not throw an invalid name results in a host not fond and an empty Map back.
-  VirtualHost getHost(String name);
+  /// Returns an empty VirtualHost if no host found. VirtualHost is immutable
+  /// and only represents a point in time.
+  VirtualHost getHost(String id);
 
   /// Removes a virtual host if it exist.
   ///
-  /// If it returns false there is no record of that name.
-  /// If it returns true means that the virtual host being removed and no new connections will be maid.
-  /// The implementation may or may not let existing connections finnish.
+  /// If the [id] did not exist it will return an empty VirtualHost;
+  /// Else it will return the status of the host right before its removal for
+  /// easier cleanup. The implementation may or may not let existing connections
+  /// finnish.
   ///
-  /// The underlying
-  bool removeHost(String name);
+  /// The service must release the port as soon as possible as it may be
+  /// reused.
+  VirtualHost removeHost(String id);
 }
 
 /// Data object with information a child server need from the proxy.
@@ -31,8 +40,8 @@ class VirtualHost{
   /// return false if valid;
   final bool isEmpty;
 
-  /// the name uses when this host was created.
-  final String name;
+  /// the id given when this host was created.
+  final String id;
   /// The port the proxy sends traffic to.
   final int port;
   /// The hostname the proxy sends traffic to.
@@ -41,14 +50,14 @@ class VirtualHost{
   final String domainName;
 
   /// Create a new valid host. Use [emptyHost] if you want an invalid one.
-  const VirtualHost(this.name,this.port,this.hostname,this.domainName): isEmpty = false;
+  const VirtualHost(this.id,this.port,this.hostname,this.domainName): isEmpty = false;
 
-  const VirtualHost._empty(): isEmpty = true, name = '', port = 0, hostname = '', domainName = '';
+  const VirtualHost._empty(): isEmpty = true, id = '', port = 0, hostname = '', domainName = '';
 
   toString(){
     if(isEmpty){
       return 'VirtualHost(empty)';
     }
-    return 'VirtualHost(name: $name, port: $port, hostname: $hostname, domainName: $domainName)';
+    return 'VirtualHost(name: $id, port: $port, hostname: $hostname, domainName: $domainName)';
   }
 }
