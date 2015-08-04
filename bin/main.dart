@@ -11,37 +11,25 @@ import 'dart:convert';
 import 'package:postgresql/postgresql.dart';
 import 'package:stack_trace/stack_trace.dart';
 
+part 'src/datastore.dart';
 part 'src/process.dart';
 part 'src/server.dart';
 part 'src/site.dart';
 part 'src/user.dart';
 part 'src/webproxy.dart';
 
-Map<String,Site> sites = {};
+Map<String, Site> sites = {};
 
 main() async {
   if (Platform.environment['FAKE'] == '1') {
     fakeRun = true;
   }
 
-  Stream<Site> stream = getFromDB();
+  Stream<Site> stream = postgresGetSites();
   stream = runSites(stream);
 
   await webServer();
-  await writeNginxConf(stream).then(startNgnix);
-}
-
-/// Loads Site data from an Postgres Database.
-///
-/// It looks for connection parameters in an environmental variable called
-/// POSTGRES_URI. Then the main site information is in the site table.
-///
-/// Will get all the sites that are not evil.
-Stream<Site> getFromDB() async* {
-  var con = await connect(Platform.environment['POSTGRES_URI']);
-  var result = await con
-      .query('SELECT name,giturl,envvar FROM site where evil = false;');
-  yield* result.map((Row r) => new Site(r.name, r.giturl, r.envvar));
+  await writeNginxConf(await stream.toList()).then(startNgnix);
 }
 
 /// Add linux username and port number to sites.
@@ -59,8 +47,27 @@ Stream<Site> runSites(Stream<Site> stream) {
   });
 }
 
-/// Writes Nginx config files.
-Future<String> writeNginxConf(Stream<Site> sites) async {
+/// Save the config and start Nginx.
+///
+/// Save the config file to /etc/nginx/conf.d/dartup.conf
+Future startNgnix(String conf) async {
+  if (fakeRun == false) {
+    var file = new File('/etc/nginx/conf.d/dartup.conf');
+    await file.writeAsString(conf);
+  } else {
+    print(conf);
+  }
+  print('Written /etc/nginx/conf.d/dartup.conf');
+
+  var result = await runProcess('nginx', []);
+  print('Ngnix started');
+  print(result.stdout);
+  print(result.stderr);
+}
+
+Future<String> writeNginxConf(List<Site> sites, {int port: 80,
+    String errorLog: 'logs/error.log', String pidFile: 'logs/nginx.pid',
+    accessLog: 'logs/access.log'}) async {
   var s = '''
 server {
   listen 80;
@@ -72,14 +79,8 @@ server {
   }
 }
   ''';
-  sites = sites.handleError((e,st){
-    print(e);
-    print(new Trace.from(st).terse);
-    throw e;
-  });
 
-
-  return s + await sites.map((site) {
+  return s + sites.map((site) {
     return '''
 server {
   listen 80;
@@ -92,22 +93,4 @@ server {
 }
   ''';
   }).join('\n');
-}
-
-/// Save the config and start Nginx.
-///
-/// Save the config file to /etc/nginx/conf.d/dartup.conf
-Future startNgnix(String conf) async {
-  if (fakeRun == false) {
-    var file = new File('/etc/nginx/conf.d/dartup.conf');
-    await file.writeAsString(conf);
-  }else{
-    print(conf);
-  }
-  print('Written /etc/nginx/conf.d/dartup.conf');
-
-  var result = await runProcess('nginx', []);
-  print('Ngnix started');
-  print(result.stdout);
-  print(result.stderr);
 }
