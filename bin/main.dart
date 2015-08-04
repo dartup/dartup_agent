@@ -9,6 +9,7 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:postgresql/postgresql.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 part 'src/process.dart';
 part 'src/server.dart';
@@ -71,6 +72,12 @@ server {
   }
 }
   ''';
+  sites = sites.handleError((e,st){
+    print(e);
+    print(new Trace.from(st).terse);
+    throw e;
+  });
+
 
   return s + await sites.map((site) {
     return '''
